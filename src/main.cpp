@@ -1,64 +1,33 @@
-/*
-   This examples shows how to make a simple seven keys MIDI keyboard with volume control
-
-   Created: 4/10/2015
-   Author: Arturo Guadalupi <a.guadalupi@arduino.cc>
-   
-   http://www.arduino.cc/en/Tutorial/MidiDevice
-*/
-
 #include "MIDIUSB.h"
 #include "PitchToNote.h"
-#define NUM_BUTTONS 7
 
-const uint8_t button1 = 2;
-const uint8_t button2 = 3;
-const uint8_t button3 = 4;
-const uint8_t button4 = 5;
-const uint8_t button5 = 6;
-const uint8_t button6 = 7;
-const uint8_t button7 = 8;
+const byte notePitches[] = {
+    D3,
+    D3,
+    D3,
+    G3,
+    D4,
+    C4,
+    B3,
+    A3,
+    G4,
+    D4,
+    C4,
+    B3,
+    A3,
+    G4,
+    D4,
+    C4,
+    B3,
+    C4,
+    A3};
+// Promethean scale
+// const byte notePitches[numButtons] = {F3, G3b, B3b, E3, A3, D3};
+int numButtons = 0;
+uint8_t noteIndex = 0;
+int laserTripped = false;
 
-const int intensityPot = 0; //A0 input
-
-const uint8_t buttons[NUM_BUTTONS] = {button1, button2, button3, button4, button5, button6, button7};
-const byte notePitches[NUM_BUTTONS] = {C3, D3, E3, F3, G3, A3, B3};
-
-uint8_t notesTime[NUM_BUTTONS];
-uint8_t pressedButtons = 0x00;
-uint8_t previousButtons = 0x00;
-uint8_t intensity;
-
-// First parameter is the event type (0x0B = control change).
-// Second parameter is the event type, combined with the channel.
-// Third parameter is the control number number (0-119).
-// Fourth parameter is the control value (0-127).
-
-void controlChange(byte channel, byte control, byte value)
-{
-  midiEventPacket_t event = {0x0B, 0xB0 | channel, control, value};
-  MidiUSB.sendMIDI(event);
-}
-
-void readButtons()
-{
-  for (int i = 0; i < NUM_BUTTONS; i++)
-  {
-    if (digitalRead(buttons[i]) == LOW)
-    {
-      bitWrite(pressedButtons, i, 1);
-      delay(50);
-    }
-    else
-      bitWrite(pressedButtons, i, 0);
-  }
-}
-
-void readIntensity()
-{
-  int val = analogRead(intensityPot);
-  intensity = (uint8_t)(map(val, 0, 1023, 0, 127));
-}
+#define SENSOR_PIN 0
 
 // First parameter is the event type (0x09 = note on, 0x08 = note off).
 // Second parameter is note-on/note-off, combined with the channel.
@@ -78,37 +47,49 @@ void noteOff(byte channel, byte pitch, byte velocity)
   MidiUSB.sendMIDI(noteOff);
 }
 
-void playNotes()
+void checkLaser()
 {
-  for (int i = 0; i < NUM_BUTTONS; i++)
+  int level = analogRead(SENSOR_PIN);
+  // Serial.println(level);
+
+  if (level < 900)
   {
-    if (bitRead(pressedButtons, i) != bitRead(previousButtons, i))
+    // Beam is broken
+    if (!laserTripped)
     {
-      if (bitRead(pressedButtons, i))
-      {
-        bitWrite(previousButtons, i, 1);
-        noteOn(0, notePitches[i], intensity);
-        MidiUSB.flush();
-      }
-      else
-      {
-        bitWrite(previousButtons, i, 0);
-        noteOff(0, notePitches[i], 0);
-        MidiUSB.flush();
-      }
+      laserTripped = true;
+      Serial.println("Laser noteOn");
+      noteOn(0, notePitches[noteIndex], 127);
+    }
+    else
+    {
+      // Already on
     }
   }
+  else
+  {
+    if (laserTripped)
+    {
+      Serial.println("Laser noteOff");
+      noteOff(0, notePitches[noteIndex], 0);
+      noteIndex = (noteIndex + 1) % numButtons;
+      laserTripped = false;
+    }
+    else
+    {
+      // Already off
+    }
+  }
+  MidiUSB.flush();
 }
-
 void setup()
 {
-  for (int i = 0; i < NUM_BUTTONS; i++)
-    pinMode(buttons[i], INPUT_PULLUP);
+  pinMode(SENSOR_PIN, INPUT);
+  Serial.begin(115200);
+  numButtons = sizeof(notePitches);
 }
 
 void loop()
 {
-  readButtons();
-  readIntensity();
-  playNotes();
+  checkLaser();
 }
