@@ -50,7 +50,7 @@ void noteOff(byte channel, byte pitch, byte velocity)
 void checkLaser()
 {
   int level = analogRead(SENSOR_PIN);
-  // Serial.println(level);
+  Serial.println(level);
 
   if (level < 900)
   {
@@ -66,7 +66,7 @@ void checkLaser()
       // Already on
     }
   }
-  else
+  else if (level > 950)
   {
     if (laserTripped)
     {
