@@ -25,9 +25,12 @@ const byte notePitches[] = {
 // const byte notePitches[numButtons] = {F3, G3b, B3b, E3, A3, D3};
 int numButtons = 0;
 uint8_t noteIndex = 0;
-int laserTripped = false;
+int laserTripped[3];
 
-#define SENSOR_PIN 0
+#define SENSOR_PIN_1 0
+#define SENSOR_PIN_2 1
+#define SENSOR_PIN_3 2
+#define THRESHOLD 700
 
 // First parameter is the event type (0x09 = note on, 0x08 = note off).
 // Second parameter is note-on/note-off, combined with the channel.
@@ -47,19 +50,23 @@ void noteOff(byte channel, byte pitch, byte velocity)
   MidiUSB.sendMIDI(noteOff);
 }
 
-void checkLaser()
+void checkLaser(int pin)
 {
-  int level = analogRead(SENSOR_PIN);
-  // Serial.println(level);
+  int level = analogRead(pin);
+  Serial.print("Level: ");
+  Serial.print(level);
+  Serial.print(" on pin: ");
+  Serial.println(pin);
 
-  if (level < 900)
+  if (level < THRESHOLD)
   {
     // Beam is broken
-    if (!laserTripped)
+    if (!laserTripped[pin])
     {
-      laserTripped = true;
-      Serial.println("Laser noteOn");
-      noteOn(0, notePitches[noteIndex], 127);
+      laserTripped[pin] = true;
+      Serial.print("Laser noteOn - pin ");
+      Serial.println(pin);
+      noteOn(pin, notePitches[noteIndex], 127);
     }
     else
     {
@@ -68,12 +75,13 @@ void checkLaser()
   }
   else
   {
-    if (laserTripped)
+    if (laserTripped[pin])
     {
-      Serial.println("Laser noteOff");
-      noteOff(0, notePitches[noteIndex], 0);
+      Serial.print("Laser noteOff - pin ");
+      Serial.println(pin);
+      noteOff(pin, notePitches[noteIndex], 0);
       noteIndex = (noteIndex + 1) % numButtons;
-      laserTripped = false;
+      laserTripped[pin] = false;
     }
     else
     {
@@ -84,12 +92,21 @@ void checkLaser()
 }
 void setup()
 {
-  pinMode(SENSOR_PIN, INPUT);
+  pinMode(SENSOR_PIN_1, INPUT);
+  pinMode(SENSOR_PIN_2, INPUT);
+  pinMode(SENSOR_PIN_3, INPUT);
+
+  laserTripped[SENSOR_PIN_1] = false;
+  laserTripped[SENSOR_PIN_2] = false;
+  laserTripped[SENSOR_PIN_3] = false;
+
   Serial.begin(115200);
   numButtons = sizeof(notePitches);
 }
 
 void loop()
 {
-  checkLaser();
+  checkLaser(SENSOR_PIN_1);
+  checkLaser(SENSOR_PIN_2);
+  checkLaser(SENSOR_PIN_3);
 }
