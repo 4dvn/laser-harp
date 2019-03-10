@@ -73,7 +73,7 @@ void checkLaser(int pin)
       // Already on
     }
   }
-  else
+  else if (level > 950)
   {
     if (laserTripped[pin])
     {
