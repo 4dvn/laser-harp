@@ -30,7 +30,8 @@ int laserTripped[3];
 #define SENSOR_PIN_1 0
 #define SENSOR_PIN_2 1
 #define SENSOR_PIN_3 2
-#define THRESHOLD 700
+
+#define THRESHOLD 850
 
 // First parameter is the event type (0x09 = note on, 0x08 = note off).
 // Second parameter is note-on/note-off, combined with the channel.
@@ -73,7 +74,7 @@ void checkLaser(int pin)
       // Already on
     }
   }
-  else if (level > 950)
+  else if (level > THRESHOLD + 50)
   {
     if (laserTripped[pin])
     {
@@ -107,6 +108,6 @@ void setup()
 void loop()
 {
   checkLaser(SENSOR_PIN_1);
-  checkLaser(SENSOR_PIN_2);
-  checkLaser(SENSOR_PIN_3);
+  // checkLaser(SENSOR_PIN_2);
+  // checkLaser(SENSOR_PIN_3);
 }
